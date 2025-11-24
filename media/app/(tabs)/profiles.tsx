@@ -14,13 +14,11 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(false);
   const [pacienteId, setPacienteId] = useState<number | null>(null);
 
-  // Estados do Formulário
   const [nome, setNome] = useState('');
   const [telefone, setTelefone] = useState('');
   const [endereco, setEndereco] = useState('');
   const [dadosCompletos, setDadosCompletos] = useState<any>(null);
 
-  // Estado do Modal de Exclusão (O "Pop-up Amigável")
   const [modalVisible, setModalVisible] = useState(false);
 
   useEffect(() => {
@@ -31,7 +29,6 @@ export default function ProfileScreen() {
     try {
       const id = await authService.getUserId();
       if (!id) {
-        // Aqui usamos alert simples pois é um erro de fluxo, mas poderia ser modal tbm
         alert("Sessão expirada. Faça login novamente.");
         router.replace('/login');
         return;
@@ -85,33 +82,27 @@ export default function ProfileScreen() {
     }
   };
 
-  // 1. Função chamada pelo botão vermelho (Abre o Modal)
   const handleBotaoExcluir = () => {
     if (!pacienteId) {
       alert("Erro: Usuário não identificado.");
       return;
     }
-    setModalVisible(true); // <--- Só abre o pop-up, não faz nada ainda
+    setModalVisible(true);
   };
 
-  // 2. Função chamada pelo "Sim" do Modal (Executa a exclusão)
   const confirmarExclusao = async () => {
     if (!pacienteId) return;
 
-    setModalVisible(false); // Fecha o modal
-    setLoading(true); // Mostra loading na tela principal
+    setModalVisible(false);
+    setLoading(true);
 
     try {
-      // Chama API
       await apiService.excluirConta(pacienteId);
       
-      // Limpa dados locais
       await authService.clearUser();
       
-      // Sucesso!
       alert("Conta excluída com sucesso.");
       
-      // Redireciona
       router.dismissAll();
       router.replace('/login');
 
@@ -160,7 +151,6 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* --- POP-UP AMIGÁVEL (MODAL) --- */}
       <Modal
         animationType="fade"
         transparent={true}
@@ -177,7 +167,6 @@ export default function ProfileScreen() {
             </Text>
 
             <View style={styles.modalButtons}>
-              {/* Botão NÃO */}
               <TouchableOpacity 
                 style={[styles.modalBtn, styles.btnCancel]} 
                 onPress={() => setModalVisible(false)}
@@ -185,7 +174,6 @@ export default function ProfileScreen() {
                 <Text style={styles.textBtnCancel}>Cancelar</Text>
               </TouchableOpacity>
 
-              {/* Botão SIM */}
               <TouchableOpacity 
                 style={[styles.modalBtn, styles.btnConfirm]} 
                 onPress={confirmarExclusao}
@@ -215,10 +203,9 @@ const styles = StyleSheet.create({
   deleteButton: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', padding: 15, borderWidth: 1, borderColor: '#C62828', borderRadius: 8, backgroundColor: '#FFEBEE' },
   deleteText: { color: '#C62828', fontWeight: 'bold', marginLeft: 10 },
 
-  // ESTILOS DO MODAL
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Fundo escuro transparente
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -228,8 +215,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 25,
     alignItems: 'center',
-    elevation: 5, // Sombra Android
-    shadowColor: '#000', // Sombra iOS/Web
+    elevation: 5,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -264,7 +251,7 @@ const styles = StyleSheet.create({
     borderColor: '#DDD',
   },
   btnConfirm: {
-    backgroundColor: '#C62828', // Vermelho
+    backgroundColor: '#C62828',
   },
   textBtnCancel: {
     color: '#333',
