@@ -103,11 +103,6 @@ export const apiService = {
     }
   },
 
-  cancelarTriagem: async (id: number) => {
-    const response = await api.patch(`/api/Triagens/${id}/cancelar`);
-    return response.data;
-  },
-
   listarUnidades: async () => {
     const response = await api.get('/api/UnidadesSaude');
     return response.data;

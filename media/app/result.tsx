@@ -1,8 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
+import { Navigation } from '../services/navigation';
+import { Button, Card } from '../components';
 
 export default function ResultScreen() {
   const router = useRouter();
@@ -33,7 +35,7 @@ export default function ResultScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <View style={[styles.card, { borderTopColor: corTema, borderTopWidth: 5 }]}>
+      <Card style={[styles.resultCard, { borderTopColor: corTema, borderTopWidth: 5 }]}>
         <Ionicons name="checkmark-circle" size={60} color={corTema} style={styles.icon} />
 
         <Text style={styles.title}>Pré-Triagem Concluída!</Text>
@@ -66,37 +68,27 @@ export default function ResultScreen() {
         <Text style={styles.instruction}>
           Mantenha esta tela aberta ao chegar no hospital.
         </Text>
-      </View>
+      </Card>
 
-      <TouchableOpacity
-        style={[styles.button, { backgroundColor: corTema }]}
-        onPress={() => router.replace('/(tabs)/history')}
-      >
-        <Text style={styles.buttonText}>VER NO MEU HISTÓRICO</Text>
-      </TouchableOpacity>
-
+      <Button
+        title="VER NO MEU HISTÓRICO"
+        onPress={() => Navigation.replaceHistory(router)}
+        style={{ backgroundColor: corTema }}
+      />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flexGrow: 1, backgroundColor: '#F5F5F5', padding: 20, alignItems: 'center' },
-  card: {
-    backgroundColor: '#FFF',
+  resultCard: {
     width: '100%',
-    borderRadius: 10,
-    padding: 20,
     alignItems: 'center',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
     marginBottom: 20,
   },
   icon: { marginBottom: 10 },
   title: { fontSize: 22, fontWeight: 'bold', color: '#333', textAlign: 'center' },
   subtitle: { fontSize: 14, color: '#666', marginBottom: 20, textAlign: 'center' },
-
   urgencyBox: {
     paddingVertical: 10,
     paddingHorizontal: 30,
@@ -107,10 +99,8 @@ const styles = StyleSheet.create({
   },
   urgencyTitle: { color: '#FFF', fontSize: 12, fontWeight: 'bold' },
   urgencyValue: { color: '#FFF', fontSize: 32, fontWeight: 'bold' },
-
   infoText: { color: '#666', fontSize: 14, textAlign: 'center' },
   instructionBold: { fontSize: 15, fontWeight: 'bold', color: '#005F99', marginBottom: 20, textAlign: 'center' },
-
   qrBox: {
     padding: 15,
     backgroundColor: '#FFF',
@@ -121,14 +111,5 @@ const styles = StyleSheet.create({
     borderColor: '#EEE'
   },
   hashText: { fontSize: 12, color: '#999', marginTop: 10 },
-
   instruction: { fontSize: 14, color: '#333', textAlign: 'center', fontStyle: 'italic' },
-
-  button: {
-    width: '100%',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  buttonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
 });

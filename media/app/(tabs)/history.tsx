@@ -4,14 +4,13 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  ActivityIndicator,
   RefreshControl
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { apiService } from '../../services/api';
 import { authService } from '../../services/auth';
 import { TriagemResponse } from '../../types';
+import { Card, Badge, LoadingSpinner, EmptyState } from '../../components';
 
 export default function HistoryScreen() {
   const [triagens, setTriagens] = useState<TriagemResponse[]>([]);
@@ -54,23 +53,19 @@ export default function HistoryScreen() {
     }, [])
   );
 
-  const getCorUrgencia = (nivel: number) => {
-    if (nivel >= 4) return '#D32F2F';
-    if (nivel === 3) return '#FBC02D';
-    return '#388E3C';
+  const getStatus = (status: number) => {
+    if (status === 1) return 'open';
+    if (status === 0) return 'cancelled';
+    return 'closed';
   };
 
   const renderItem = ({ item }: { item: TriagemResponse }) => {
-    const corUrgencia = getCorUrgencia(item.nivelUrgencia);
-    const isAberta = item.status === 1;
-    const isCancelada = item.status === 0;
+    const statusText = item.status === 1 ? 'ABERTA' : (item.status === 0 ? 'CANCELADA' : 'FINALIZADA');
 
     return (
-      <View style={styles.card}>
+      <Card>
         <View style={styles.cardHeader}>
-          <View style={styles.badgeId}>
-            <Text style={styles.badgeText}>#{item.id}</Text>
-          </View>
+          <Badge text={`#${item.id}`} />
           <Text style={styles.dateText}>
             {new Date(item.dataCriacao).toLocaleDateString('pt-BR')}
           </Text>
@@ -79,37 +74,34 @@ export default function HistoryScreen() {
         <Text style={styles.sintomas} numberOfLines={2}>{item.sintomasDescricao}</Text>
 
         <View style={styles.footer}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <View style={[styles.dot, { backgroundColor: corUrgencia }]} />
-            <Text style={styles.urgenciaText}>Urgência {item.nivelUrgencia}</Text>
+          <View style={styles.urgencyContainer}>
+            <Badge
+              text={`Urgência ${item.nivelUrgencia}`}
+              variant="urgency"
+              urgencyLevel={item.nivelUrgencia}
+              fontSize={14}
+            />
           </View>
 
-          <View style={[
-            styles.statusBadge, 
-            { backgroundColor: isAberta ? '#E3F2FD' : (isCancelada ? '#FFEBEE' : '#F5F5F5') }
-          ]}>
-            <Text style={[
-              styles.statusText,
-              { color: isAberta ? '#1976D2' : (isCancelada ? '#C62828' : '#666') }
-            ]}>
-              {isAberta ? 'ABERTA' : (isCancelada ? 'CANCELADA' : 'FINALIZADA')}
-            </Text>
-          </View>
+          <Badge
+            text={statusText}
+            variant="status"
+            status={getStatus(item.status)}
+          />
         </View>
-      </View>
+      </Card>
     );
   };
 
   return (
     <View style={styles.container}>
       {loading && !refreshing ? (
-        <ActivityIndicator size="large" color="#005F99" style={{ marginTop: 20 }} />
+        <LoadingSpinner />
       ) : triagens.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="document-text-outline" size={64} color="#CCC" />
-          <Text style={styles.emptyText}>Nenhuma triagem encontrada</Text>
-          <Text style={styles.emptySubtext}>Suas triagens aparecerão aqui</Text>
-        </View>
+        <EmptyState
+          title="Nenhuma triagem encontrada"
+          subtitle="Suas triagens aparecerão aqui"
+        />
       ) : (
         <FlatList
           data={triagens}
@@ -128,19 +120,9 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
   listContent: { padding: 15 },
-  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
-  emptyText: { fontSize: 18, fontWeight: 'bold', color: '#666', marginTop: 20, marginBottom: 8 },
-  emptySubtext: { fontSize: 14, color: '#999', textAlign: 'center' },
-  
-  card: { backgroundColor: '#FFF', borderRadius: 12, padding: 15, marginBottom: 15, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  badgeId: { backgroundColor: '#EEE', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  badgeText: { fontWeight: 'bold', color: '#555', fontSize: 12 },
   dateText: { color: '#999', fontSize: 12 },
   sintomas: { fontSize: 16, color: '#333', marginBottom: 15, lineHeight: 22 },
   footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#F0F0F0', paddingTop: 10 },
-  dot: { width: 10, height: 10, borderRadius: 5, marginRight: 6 },
-  urgenciaText: { fontSize: 14, fontWeight: 'bold', color: '#555' },
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  statusText: { fontSize: 10, fontWeight: 'bold' },
+  urgencyContainer: { flexDirection: 'row', alignItems: 'center' },
 });

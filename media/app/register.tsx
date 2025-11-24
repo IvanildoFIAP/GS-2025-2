@@ -2,15 +2,15 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
-  TouchableOpacity,
   StyleSheet,
   ScrollView,
-  ActivityIndicator
+  TouchableOpacity
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { apiService } from '../services/api';
+import { Navigation } from '../services/navigation';
 import { maskCPF, maskPhone, maskDate, validateCPF, removeNonNumeric, convertDateToISO } from '../utils/masks';
+import { Button, Input, Header } from '../components';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -31,7 +31,6 @@ export default function RegisterScreen() {
     const masked = maskCPF(value);
     setDocumento(masked);
     setCpfError('');
-    
     
     const cpfDigits = removeNonNumeric(masked);
     if (cpfDigits.length === 11) {
@@ -61,7 +60,6 @@ export default function RegisterScreen() {
       return;
     }
 
-    
     const cpfDigits = removeNonNumeric(documento);
     if (cpfDigits.length !== 11) {
       setErro('CPF inválido. Insira 11 números.');
@@ -74,7 +72,6 @@ export default function RegisterScreen() {
       return;
     }
 
-    
     let isoDate: string;
     try {
       isoDate = convertDateToISO(dataNascimento);
@@ -83,7 +80,6 @@ export default function RegisterScreen() {
       return;
     }
 
-    
     const phoneDigits = removeNonNumeric(telefone);
     if (phoneDigits.length < 10) {
       setErro('Telefone inválido. Insira pelo menos 10 dígitos.');
@@ -108,7 +104,7 @@ export default function RegisterScreen() {
       setSucesso('Cadastro realizado com sucesso! Redirecionando...');
 
       setTimeout(() => {
-        router.back();
+        Navigation.back(router);
       }, 1500);
 
     } catch (error) {
@@ -119,18 +115,23 @@ export default function RegisterScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Criar Conta</Text>
-        <Text style={styles.subtitle}>Preencha seus dados para a triagem</Text>
-      </View>
+      <Header
+        title="Criar Conta"
+        subtitle="Preencha seus dados para a triagem"
+        backgroundColor="#F5F5F5"
+        style={styles.header}
+      />
 
       <View style={styles.form}>
-        <Text style={styles.label}>Nome Completo</Text>
-        <TextInput style={styles.input} value={nomeCompleto} onChangeText={setNomeCompleto} placeholder="Ex: Maria Silva" />
+        <Input
+          label="Nome Completo"
+          value={nomeCompleto}
+          onChangeText={setNomeCompleto}
+          placeholder="Ex: Maria Silva"
+        />
 
-        <Text style={styles.label}>CPF</Text>
-        <TextInput
-          style={[styles.input, cpfError ? styles.inputError : null]}
+        <Input
+          label="CPF"
           value={documento}
           onChangeText={handleCPFChange}
           keyboardType="numeric"
@@ -141,12 +142,11 @@ export default function RegisterScreen() {
           autoCorrect={false}
           autoCapitalize="none"
           importantForAutofill="no"
+          error={cpfError}
         />
-        {cpfError ? <Text style={styles.errorText}>{cpfError}</Text> : null}
 
-        <Text style={styles.label}>Data de Nascimento</Text>
-        <TextInput
-          style={styles.input}
+        <Input
+          label="Data de Nascimento"
           value={dataNascimento}
           onChangeText={handleDateChange}
           keyboardType="numeric"
@@ -154,9 +154,8 @@ export default function RegisterScreen() {
           maxLength={10}
         />
 
-        <Text style={styles.label}>Telefone</Text>
-        <TextInput
-          style={styles.input}
+        <Input
+          label="Telefone"
           value={telefone}
           onChangeText={handlePhoneChange}
           keyboardType="phone-pad"
@@ -164,24 +163,32 @@ export default function RegisterScreen() {
           maxLength={15}
         />
 
-        <Text style={styles.label}>Endereço</Text>
-        <TextInput style={styles.input} value={endereco} onChangeText={setEndereco} placeholder="Rua, Número - Bairro" />
+        <Input
+          label="Endereço"
+          value={endereco}
+          onChangeText={setEndereco}
+          placeholder="Rua, Número - Bairro"
+        />
 
-        <Text style={styles.label}>Senha</Text>
-        <TextInput style={styles.input} value={senha} onChangeText={setSenha} secureTextEntry placeholder="Mínimo 6 caracteres" />
+        <Input
+          label="Senha"
+          value={senha}
+          onChangeText={setSenha}
+          secureTextEntry
+          placeholder="Mínimo 6 caracteres"
+        />
 
         {erro ? <Text style={styles.errorText}>{erro}</Text> : null}
         {sucesso ? <Text style={styles.successText}>{sucesso}</Text> : null}
 
-        <TouchableOpacity
-          style={[styles.button, sucesso ? styles.buttonSuccess : null]}
+        <Button
+          title="CADASTRAR"
           onPress={handleRegister}
-          disabled={loading}
-        >
-          {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.buttonText}>CADASTRAR</Text>}
-        </TouchableOpacity>
+          loading={loading}
+          variant={sucesso ? 'success' : 'primary'}
+        />
 
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backButton} onPress={() => Navigation.back(router)}>
           <Text style={styles.backText}>Voltar para Login</Text>
         </TouchableOpacity>
       </View>
@@ -192,20 +199,9 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   scrollContainer: { flexGrow: 1, backgroundColor: '#F5F5F5', padding: 20, justifyContent: 'center' },
   header: { alignItems: 'center', marginBottom: 30, marginTop: 20 },
-  title: { fontSize: 28, fontWeight: 'bold', color: '#005F99' },
-  subtitle: { color: '#666', marginTop: 5 },
   form: { width: '100%' },
-  label: { fontSize: 14, color: '#333', marginBottom: 5, fontWeight: '600' },
-  input: { backgroundColor: '#FFF', borderRadius: 8, padding: 12, marginBottom: 15, borderWidth: 1, borderColor: '#DDD' },
-  inputError: { borderColor: 'red', borderWidth: 2 },
-
   errorText: { color: 'red', textAlign: 'center', marginBottom: 10, fontWeight: 'bold' },
   successText: { color: 'green', textAlign: 'center', marginBottom: 10, fontWeight: 'bold', fontSize: 16 },
-
-  button: { backgroundColor: '#005F99', padding: 15, borderRadius: 8, alignItems: 'center', marginTop: 10 },
-  buttonSuccess: { backgroundColor: 'green' },
-
-  buttonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
-  backButton: { marginTop: 20, alignItems: 'center', marginBottom: 20 },
+  backButton: { marginTop: 20, marginBottom: 20, backgroundColor: 'transparent' },
   backText: { color: '#666' },
 });

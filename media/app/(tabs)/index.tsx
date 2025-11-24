@@ -3,13 +3,13 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator
+  StyleSheet
 } from 'react-native';
-import { useRouter } from 'expo-router';
 import { apiService } from '../../services/api';
 import { authService } from '../../services/auth';
+import { Navigation } from '../../services/navigation';
+import { Button, Card } from '../../components';
+import { useRouter } from 'expo-router';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -53,14 +53,11 @@ export default function HomeScreen() {
 
       const resultado = await apiService.analisarSintomas(dadosTriagem);
 
-      router.push({
-        pathname: '/result',
-        params: {
-          id: resultado.id,
-          nivelUrgencia: resultado.nivelUrgencia,
-          qrCodeBase64: resultado.qrCodeBase64,
-          sintomas: resultado.sintomasDescricao
-        }
+      Navigation.result(router, {
+        id: resultado.id,
+        nivelUrgencia: resultado.nivelUrgencia,
+        qrCodeBase64: resultado.qrCodeBase64,
+        sintomas: resultado.sintomasDescricao
       });
 
       setSintomas('');
@@ -79,7 +76,7 @@ export default function HomeScreen() {
         <Text style={styles.question}>O que você está sentindo hoje?</Text>
       </View>
 
-      <View style={styles.card}>
+      <Card>
         <Text style={styles.label}>Descreva seus sintomas:</Text>
         <TextInput
           style={styles.textArea}
@@ -94,18 +91,12 @@ export default function HomeScreen() {
 
         {erro ? <Text style={styles.errorText}>{erro}</Text> : null}
 
-        <TouchableOpacity
-          style={styles.button}
+        <Button
+          title="ANALISAR SINTOMAS"
           onPress={handleAnalise}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#FFF" />
-          ) : (
-            <Text style={styles.buttonText}>ANALISAR SINTOMAS</Text>
-          )}
-        </TouchableOpacity>
-      </View>
+          loading={loading}
+        />
+      </Card>
 
       <View style={styles.infoBox}>
         <Text style={styles.infoTitle}>Como funciona?</Text>
@@ -137,16 +128,6 @@ const styles = StyleSheet.create({
     color: '#005F99',
     width: '80%'
   },
-
-  card: {
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    padding: 20,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-  },
   label: {
     fontSize: 16,
     fontWeight: 'bold',
@@ -168,19 +149,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     fontWeight: 'bold'
   },
-
-  button: {
-    backgroundColor: '#005F99',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#FFF',
-    fontWeight: 'bold',
-    fontSize: 16
-  },
-
   infoBox: {
     marginTop: 30,
     padding: 10

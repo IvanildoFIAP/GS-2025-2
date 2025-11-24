@@ -10,6 +10,7 @@ import {
 import { useRouter } from 'expo-router';
 import { apiService } from '../services/api';
 import { authService } from '../services/auth';
+import { Navigation } from '../services/navigation';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -27,7 +28,6 @@ export default function LoginScreen() {
       return;
     }
 
-    
     const cpfDigits = documento.replace(/\D/g, '');
     if (cpfDigits.length !== 11) {
       setErro('CPF inválido. Insira 11 números.');
@@ -40,11 +40,10 @@ export default function LoginScreen() {
       const userData = await apiService.login(cpfDigits);
       
       await authService.saveUser(userData);
-      router.replace('/(tabs)');
+      Navigation.replaceHome(router);
     } catch (error: any) {
       console.error('Erro no login:', error);
-      
-      
+
       if (error.message && error.message.includes('não encontrado')) {
         setErro('CPF não cadastrado. Por favor, cadastre-se primeiro.');
       } else if (error.response?.status === 401) {
@@ -108,7 +107,7 @@ export default function LoginScreen() {
 
         <TouchableOpacity
           style={styles.registerLink}
-          onPress={() => router.push('/register')}
+          onPress={() => Navigation.register(router)}
         >
           <Text style={styles.registerText}>
             Ainda não tem conta? <Text style={styles.registerBold}>Cadastre-se</Text>
