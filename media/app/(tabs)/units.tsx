@@ -41,7 +41,7 @@ export default function UnitsScreen() {
   );
 
   const unidadesFiltradas = unidades.filter(u =>
-    filtroZona === "Todas" ? true : u.zona === filtroZona
+    filtroZona === "Todas" ? true : u.ocupacao === filtroZona
   );
 
   const renderItem = ({ item }: { item: UnidadeSaude }) => {
@@ -56,7 +56,7 @@ export default function UnitsScreen() {
             <View style={styles.headerRow}>
               <Text style={styles.name}>{item.nome}</Text>
               <View style={styles.zoneBadge}>
-                <Text style={styles.zoneText}>{item.zona}</Text>
+                <Text style={styles.zoneText}>{item.ocupacao}</Text>
               </View>
             </View>
 

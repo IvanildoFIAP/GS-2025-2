@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { apiService } from '../services/api';
+import { authService } from '../services/auth';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -26,7 +27,7 @@ export default function LoginScreen() {
       return;
     }
 
-    // Apenas dígitos do CPF
+    
     const cpfDigits = documento.replace(/\D/g, '');
     if (cpfDigits.length !== 11) {
       setErro('CPF inválido. Insira 11 números.');
@@ -36,10 +37,23 @@ export default function LoginScreen() {
     setLoading(true);
 
     try {
-      await apiService.login(cpfDigits);
+      const userData = await apiService.login(cpfDigits);
+      
+      await authService.saveUser(userData);
       router.replace('/(tabs)');
-    } catch (error) {
-      setErro('Falha no login. Verifique seus dados.');
+    } catch (error: any) {
+      console.error('Erro no login:', error);
+      
+      
+      if (error.message && error.message.includes('não encontrado')) {
+        setErro('CPF não cadastrado. Por favor, cadastre-se primeiro.');
+      } else if (error.response?.status === 401) {
+        setErro('CPF ou senha incorretos.');
+      } else if (error.code === 'ERR_NETWORK' || error.message?.includes('Network')) {
+        setErro('Erro de conexão. Verifique sua internet e tente novamente.');
+      } else {
+        setErro('Falha no login. Verifique seus dados e tente novamente.');
+      }
     } finally {
       setLoading(false);
     }
@@ -48,7 +62,7 @@ export default function LoginScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>MEDIA</Text>
+        <Text style={styles.title}>MedIA</Text>
         <Text style={styles.subtitle}>Pré-triagem inteligente</Text>
       </View>
 

@@ -1,7 +1,5 @@
-// types/index.ts
-
 export interface Paciente {
-  id?: number; // Opcional na criação
+  id?: number;
   nomeCompleto: string;
   documento: string;
   dataNascimento: string;
@@ -16,9 +14,8 @@ export interface UnidadeSaude {
   nome: string;
   endereco: string;
   cidade: string;
-  zona: 'Norte' | 'Sul' | 'Leste' | 'Oeste' | 'Centro'; // NOVO CAMPO
+  ocupacao: string;
   telefone?: string;
-  // ocupacao, latitude e longitude podem sair ou ficar opcionais
 }
 
 export interface TriagemRequest {
@@ -32,7 +29,7 @@ export interface TriagemResponse {
   unidadeSaudeId: number;
   sintomasDescricao: string;
   nivelUrgencia: number;
-  status: number; // Supondo que 1 = Aberta
+  status: number;
   dataCriacao: string;
   qrCodeBase64: string;
   links: {
@@ -41,7 +38,6 @@ export interface TriagemResponse {
   };
 }
 
-// Interface para os parâmetros de busca
 export interface SearchParams {
   page?: number;
   size?: number;

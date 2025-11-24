@@ -1,19 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  Alert, ActivityIndicator, ScrollView
+  Alert, ActivityIndicator, ScrollView, Modal
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { apiService } from '../../services/api';
+import { authService } from '../../services/auth';
+import { maskPhone, removeNonNumeric } from '../../utils/masks';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [pacienteId, setPacienteId] = useState<number | null>(null);
 
+  // Estados do Formulário
   const [nome, setNome] = useState('');
   const [telefone, setTelefone] = useState('');
   const [endereco, setEndereco] = useState('');
+  const [dadosCompletos, setDadosCompletos] = useState<any>(null);
+
+  // Estado do Modal de Exclusão (O "Pop-up Amigável")
+  const [modalVisible, setModalVisible] = useState(false);
 
   useEffect(() => {
     carregarDados();
@@ -21,51 +29,98 @@ export default function ProfileScreen() {
 
   const carregarDados = async () => {
     try {
-      const dados = await apiService.buscarPerfil(1);
+      const id = await authService.getUserId();
+      if (!id) {
+        // Aqui usamos alert simples pois é um erro de fluxo, mas poderia ser modal tbm
+        alert("Sessão expirada. Faça login novamente.");
+        router.replace('/login');
+        return;
+      }
+      setPacienteId(id);
+      const dados = await apiService.buscarPerfil(id);
+      
+      setDadosCompletos(dados);
       setNome(dados.nomeCompleto);
-      setTelefone(dados.telefone);
+      const telefoneFormatado = dados.telefone ? maskPhone(dados.telefone) : '';
+      setTelefone(telefoneFormatado);
       setEndereco(dados.endereco);
     } catch (error) {
-      console.log("Erro ao carregar perfil");
+      console.error("Erro ao carregar perfil:", error);
     }
   };
 
   const handleSalvar = async () => {
+    if (!pacienteId || !dadosCompletos) return;
+    
+    if (!nome.trim() || !telefone.trim() || !endereco.trim()) {
+      alert("Preencha todos os campos obrigatórios.");
+      return;
+    }
+    
     setLoading(true);
     try {
-      await apiService.atualizarPerfil(1, {
-        nomeCompleto: nome,
-        telefone,
-        endereco
-      });
-      Alert.alert("Sucesso", "Dados atualizados!");
+      const telefoneLimpo = removeNonNumeric(telefone);
+      
+      const dadosAtualizados: any = {
+        id: pacienteId,
+        nomeCompleto: nome.trim(),
+        documento: dadosCompletos.documento,
+        dataNascimento: dadosCompletos.dataNascimento,
+        telefone: telefoneLimpo,
+        endereco: endereco.trim(),
+        latitude: dadosCompletos.latitude || -23.5505,
+        longitude: dadosCompletos.longitude || -46.6333
+      };
+      
+      await apiService.atualizarPerfil(pacienteId, dadosAtualizados);
+      
+      setDadosCompletos({ ...dadosCompletos, ...dadosAtualizados });
+      await authService.saveUser({ id: pacienteId, nome: nome.trim() });
+      
+      alert("Sucesso! Dados atualizados.");
     } catch (error) {
-      Alert.alert("Erro", "Falha ao atualizar.");
+      alert("Erro ao atualizar perfil.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleExcluir = () => {
-    Alert.alert(
-      "Excluir Conta",
-      "Tem certeza? Isso apagará todos os seus dados.",
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Sim, Excluir",
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await apiService.excluirConta(1);
-              router.replace('/login');
-            } catch (error) {
-              Alert.alert("Erro", "Não foi possível excluir.");
-            }
-          }
-        }
-      ]
-    );
+  // 1. Função chamada pelo botão vermelho (Abre o Modal)
+  const handleBotaoExcluir = () => {
+    if (!pacienteId) {
+      alert("Erro: Usuário não identificado.");
+      return;
+    }
+    setModalVisible(true); // <--- Só abre o pop-up, não faz nada ainda
+  };
+
+  // 2. Função chamada pelo "Sim" do Modal (Executa a exclusão)
+  const confirmarExclusao = async () => {
+    if (!pacienteId) return;
+
+    setModalVisible(false); // Fecha o modal
+    setLoading(true); // Mostra loading na tela principal
+
+    try {
+      // Chama API
+      await apiService.excluirConta(pacienteId);
+      
+      // Limpa dados locais
+      await authService.clearUser();
+      
+      // Sucesso!
+      alert("Conta excluída com sucesso.");
+      
+      // Redireciona
+      router.dismissAll();
+      router.replace('/login');
+
+    } catch (error) {
+      console.error("Erro ao excluir:", error);
+      alert("Não foi possível excluir a conta. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -82,7 +137,13 @@ export default function ProfileScreen() {
         <TextInput style={styles.input} value={nome} onChangeText={setNome} />
 
         <Text style={styles.label}>Telefone</Text>
-        <TextInput style={styles.input} value={telefone} onChangeText={setTelefone} keyboardType="phone-pad" />
+        <TextInput
+          style={styles.input}
+          value={telefone}
+          onChangeText={(value) => setTelefone(maskPhone(value))}
+          keyboardType="phone-pad"
+          maxLength={15}
+        />
 
         <Text style={styles.label}>Endereço</Text>
         <TextInput style={styles.input} value={endereco} onChangeText={setEndereco} />
@@ -93,11 +154,49 @@ export default function ProfileScreen() {
 
         <View style={styles.divider} />
 
-        <TouchableOpacity style={styles.deleteButton} onPress={handleExcluir}>
+        <TouchableOpacity style={styles.deleteButton} onPress={handleBotaoExcluir}>
           <Ionicons name="trash-outline" size={20} color="#C62828" />
           <Text style={styles.deleteText}>Excluir minha conta</Text>
         </TouchableOpacity>
       </View>
+
+      {/* --- POP-UP AMIGÁVEL (MODAL) --- */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Ionicons name="warning-outline" size={50} color="#C62828" style={{marginBottom: 15}} />
+            
+            <Text style={styles.modalTitle}>Tem certeza?</Text>
+            <Text style={styles.modalText}>
+              Essa ação apagará todos os seus dados e histórico de triagens. Não é possível desfazer.
+            </Text>
+
+            <View style={styles.modalButtons}>
+              {/* Botão NÃO */}
+              <TouchableOpacity 
+                style={[styles.modalBtn, styles.btnCancel]} 
+                onPress={() => setModalVisible(false)}
+              >
+                <Text style={styles.textBtnCancel}>Cancelar</Text>
+              </TouchableOpacity>
+
+              {/* Botão SIM */}
+              <TouchableOpacity 
+                style={[styles.modalBtn, styles.btnConfirm]} 
+                onPress={confirmarExclusao}
+              >
+                <Text style={styles.textBtnConfirm}>Sim, Excluir</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
     </ScrollView>
   );
 }
@@ -115,4 +214,64 @@ const styles = StyleSheet.create({
   divider: { height: 1, backgroundColor: '#DDD', marginVertical: 30 },
   deleteButton: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', padding: 15, borderWidth: 1, borderColor: '#C62828', borderRadius: 8, backgroundColor: '#FFEBEE' },
   deleteText: { color: '#C62828', fontWeight: 'bold', marginLeft: 10 },
+
+  // ESTILOS DO MODAL
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Fundo escuro transparente
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '85%',
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 25,
+    alignItems: 'center',
+    elevation: 5, // Sombra Android
+    shadowColor: '#000', // Sombra iOS/Web
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  modalText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 25,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    width: '100%',
+    justifyContent: 'space-between',
+  },
+  modalBtn: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginHorizontal: 5,
+  },
+  btnCancel: {
+    backgroundColor: '#F5F5F5',
+    borderWidth: 1,
+    borderColor: '#DDD',
+  },
+  btnConfirm: {
+    backgroundColor: '#C62828', // Vermelho
+  },
+  textBtnCancel: {
+    color: '#333',
+    fontWeight: 'bold',
+  },
+  textBtnConfirm: {
+    color: '#FFF',
+    fontWeight: 'bold',
+  },
 });

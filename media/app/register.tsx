@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { apiService } from '../services/api';
+import { maskCPF, maskPhone, maskDate, validateCPF, removeNonNumeric, convertDateToISO } from '../utils/masks';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -24,31 +25,70 @@ export default function RegisterScreen() {
   const [telefone, setTelefone] = useState('');
   const [endereco, setEndereco] = useState('');
   const [senha, setSenha] = useState('');
+  const [cpfError, setCpfError] = useState('');
+
+  const handleCPFChange = (value: string) => {
+    const masked = maskCPF(value);
+    setDocumento(masked);
+    setCpfError('');
+    
+    
+    const cpfDigits = removeNonNumeric(masked);
+    if (cpfDigits.length === 11) {
+      if (!validateCPF(masked)) {
+        setCpfError('CPF inválido. Verifique os dígitos.');
+      }
+    }
+  };
+
+  const handlePhoneChange = (value: string) => {
+    const masked = maskPhone(value);
+    setTelefone(masked);
+  };
+
+  const handleDateChange = (value: string) => {
+    const masked = maskDate(value);
+    setDataNascimento(masked);
+  };
 
   const handleRegister = async () => {
     setErro('');
     setSucesso('');
+    setCpfError('');
 
     if (!nomeCompleto || !documento || !dataNascimento || !telefone || !endereco) {
       setErro('Preencha todos os campos obrigatórios.');
       return;
     }
 
-    // Validar CPF (apenas dígitos, 11 números)
-    const cpfDigits = documento.replace(/\D/g, '');
+    
+    const cpfDigits = removeNonNumeric(documento);
     if (cpfDigits.length !== 11) {
       setErro('CPF inválido. Insira 11 números.');
       return;
     }
 
-    // Validar e converter data de nascimento de DD/MM/AAAA para AAAA-MM-DD
-    const match = dataNascimento.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    if (!match) {
-      setErro('Data de nascimento inválida. Use DD/MM/AAAA.');
+    if (!validateCPF(documento)) {
+      setErro('CPF inválido. Verifique os dígitos.');
+      setCpfError('CPF inválido. Verifique os dígitos.');
       return;
     }
-    const [, dd, mm, yyyy] = match;
-    const isoDate = `${yyyy}-${mm}-${dd}`;
+
+    
+    let isoDate: string;
+    try {
+      isoDate = convertDateToISO(dataNascimento);
+    } catch (error) {
+      setErro('Data de nascimento inválida. Use DD-MM-YYYY.');
+      return;
+    }
+
+    
+    const phoneDigits = removeNonNumeric(telefone);
+    if (phoneDigits.length < 10) {
+      setErro('Telefone inválido. Insira pelo menos 10 dígitos.');
+      return;
+    }
 
     setLoading(true);
 
@@ -57,7 +97,7 @@ export default function RegisterScreen() {
         nomeCompleto,
         documento: cpfDigits,
         dataNascimento: isoDate,
-        telefone,
+        telefone: phoneDigits,
         endereco,
         latitude: -23.5505,
         longitude: -46.6333,
@@ -90,23 +130,39 @@ export default function RegisterScreen() {
 
         <Text style={styles.label}>CPF</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, cpfError ? styles.inputError : null]}
           value={documento}
-          onChangeText={setDocumento}
+          onChangeText={handleCPFChange}
           keyboardType="numeric"
-          placeholder="Insira um CPF válido"
+          placeholder="000.000.000-00"
+          maxLength={14}
           autoComplete="off"
           textContentType="none"
           autoCorrect={false}
           autoCapitalize="none"
           importantForAutofill="no"
         />
+        {cpfError ? <Text style={styles.errorText}>{cpfError}</Text> : null}
 
         <Text style={styles.label}>Data de Nascimento</Text>
-        <TextInput style={styles.input} value={dataNascimento} onChangeText={setDataNascimento} placeholder="DD/MM/AAAA" />
+        <TextInput
+          style={styles.input}
+          value={dataNascimento}
+          onChangeText={handleDateChange}
+          keyboardType="numeric"
+          placeholder="DD-MM-AAAA"
+          maxLength={10}
+        />
 
         <Text style={styles.label}>Telefone</Text>
-        <TextInput style={styles.input} value={telefone} onChangeText={setTelefone} keyboardType="phone-pad" placeholder="(11) 99999-9999" />
+        <TextInput
+          style={styles.input}
+          value={telefone}
+          onChangeText={handlePhoneChange}
+          keyboardType="phone-pad"
+          placeholder="(11) 99999-9999"
+          maxLength={15}
+        />
 
         <Text style={styles.label}>Endereço</Text>
         <TextInput style={styles.input} value={endereco} onChangeText={setEndereco} placeholder="Rua, Número - Bairro" />
@@ -141,6 +197,7 @@ const styles = StyleSheet.create({
   form: { width: '100%' },
   label: { fontSize: 14, color: '#333', marginBottom: 5, fontWeight: '600' },
   input: { backgroundColor: '#FFF', borderRadius: 8, padding: 12, marginBottom: 15, borderWidth: 1, borderColor: '#DDD' },
+  inputError: { borderColor: 'red', borderWidth: 2 },
 
   errorText: { color: 'red', textAlign: 'center', marginBottom: 10, fontWeight: 'bold' },
   successText: { color: 'green', textAlign: 'center', marginBottom: 10, fontWeight: 'bold', fontSize: 16 },

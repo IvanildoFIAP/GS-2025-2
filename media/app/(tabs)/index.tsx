@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { apiService } from '../../services/api';
+import { authService } from '../../services/auth';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -16,6 +17,19 @@ export default function HomeScreen() {
   const [sintomas, setSintomas] = useState('');
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState('');
+  const [userName, setUserName] = useState('');
+  const [pacienteId, setPacienteId] = useState<number | null>(null);
+
+  useEffect(() => {
+    carregarDadosUsuario();
+  }, []);
+
+  const carregarDadosUsuario = async () => {
+    const name = await authService.getUserName();
+    const id = await authService.getUserId();
+    if (name) setUserName(name);
+    if (id) setPacienteId(id);
+  };
 
   const handleAnalise = async () => {
     if (!sintomas.trim()) {
@@ -26,9 +40,14 @@ export default function HomeScreen() {
     setLoading(true);
     setErro('');
 
+    if (!pacienteId) {
+      setErro('Erro ao identificar usuário. Faça login novamente.');
+      return;
+    }
+
     try {
       const dadosTriagem = {
-        pacienteId: 1,
+        pacienteId: pacienteId,
         sintomasDescricao: sintomas
       };
 
@@ -56,7 +75,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.greeting}>Olá, Ivanildo Silva</Text>
+        <Text style={styles.greeting}>Olá, {userName || 'Usuário'}</Text>
         <Text style={styles.question}>O que você está sentindo hoje?</Text>
       </View>
 

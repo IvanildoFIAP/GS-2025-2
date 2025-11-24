@@ -4,14 +4,13 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  TouchableOpacity,
   ActivityIndicator,
-  RefreshControl,
-  Modal
+  RefreshControl
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { apiService } from '../../services/api';
+import { authService } from '../../services/auth';
 import { TriagemResponse } from '../../types';
 
 export default function HistoryScreen() {
@@ -19,15 +18,30 @@ export default function HistoryScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const [modalVisible, setModalVisible] = useState(false);
-  const [idParaCancelar, setIdParaCancelar] = useState<number | null>(null);
-
   const loadData = async () => {
     try {
-      const dados = await apiService.buscarHistorico({ pacienteId: 1, sort: 'dataDesc' });
+      const pacienteId = await authService.getUserId();
+      if (!pacienteId) {
+        console.log('Usuário não identificado');
+        setTriagens([]);
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+      
+      console.log('Buscando histórico para pacienteId:', pacienteId);
+      const dados = await apiService.buscarHistorico({
+        pacienteId,
+        sort: 'dataDesc',
+        page: 1,
+        size: 100
+      });
+      console.log('Triagens recebidas:', dados);
       setTriagens(Array.isArray(dados) ? dados : []);
-    } catch (error) {
-      console.log('Erro ao carregar');
+    } catch (error: any) {
+      console.error('Erro ao carregar histórico:', error);
+      console.error('Detalhes do erro:', error.response?.data || error.message);
+      setTriagens([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -39,29 +53,6 @@ export default function HistoryScreen() {
       loadData();
     }, [])
   );
-
-  const abrirConfirmacao = (id: number) => {
-    setIdParaCancelar(id);
-    setModalVisible(true);
-  };
-
-  const confirmarCancelamento = async () => {
-    if (idParaCancelar === null) return;
-
-    try {
-      setModalVisible(false);
-      setLoading(true);
-
-      await apiService.cancelarTriagem(idParaCancelar);
-      await loadData();
-
-    } catch (error) {
-      alert("Erro ao cancelar");
-    } finally {
-      setLoading(false);
-      setIdParaCancelar(null);
-    }
-  };
 
   const getCorUrgencia = (nivel: number) => {
     if (nivel >= 4) return '#D32F2F';
@@ -94,7 +85,7 @@ export default function HistoryScreen() {
           </View>
 
           <View style={[
-            styles.statusBadge,
+            styles.statusBadge, 
             { backgroundColor: isAberta ? '#E3F2FD' : (isCancelada ? '#FFEBEE' : '#F5F5F5') }
           ]}>
             <Text style={[
@@ -105,16 +96,6 @@ export default function HistoryScreen() {
             </Text>
           </View>
         </View>
-
-        {isAberta && (
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={() => abrirConfirmacao(item.id)}
-          >
-            <Ionicons name="close-circle-outline" size={20} color="#C62828" />
-            <Text style={styles.cancelText}>Cancelar Triagem</Text>
-          </TouchableOpacity>
-        )}
       </View>
     );
   };
@@ -123,6 +104,12 @@ export default function HistoryScreen() {
     <View style={styles.container}>
       {loading && !refreshing ? (
         <ActivityIndicator size="large" color="#005F99" style={{ marginTop: 20 }} />
+      ) : triagens.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="document-text-outline" size={64} color="#CCC" />
+          <Text style={styles.emptyText}>Nenhuma triagem encontrada</Text>
+          <Text style={styles.emptySubtext}>Suas triagens aparecerão aqui</Text>
+        </View>
       ) : (
         <FlatList
           data={triagens}
@@ -134,40 +121,6 @@ export default function HistoryScreen() {
           }
         />
       )}
-
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Ionicons name="warning-outline" size={50} color="#C62828" style={{marginBottom: 15}} />
-
-            <Text style={styles.modalTitle}>Cancelar Solicitação?</Text>
-            <Text style={styles.modalText}>
-              Tem certeza que deseja cancelar a triagem #{idParaCancelar}? Essa ação não pode ser desfeita.
-            </Text>
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalBtn, styles.btnCancel]}
-                onPress={() => setModalVisible(false)}
-              >
-                <Text style={styles.textBtnCancel}>Não, voltar</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.modalBtn, styles.btnConfirm]}
-                onPress={confirmarCancelamento}
-              >
-                <Text style={styles.textBtnConfirm}>Sim, Cancelar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -175,7 +128,10 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
   listContent: { padding: 15 },
-
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
+  emptyText: { fontSize: 18, fontWeight: 'bold', color: '#666', marginTop: 20, marginBottom: 8 },
+  emptySubtext: { fontSize: 14, color: '#999', textAlign: 'center' },
+  
   card: { backgroundColor: '#FFF', borderRadius: 12, padding: 15, marginBottom: 15, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   badgeId: { backgroundColor: '#EEE', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
@@ -187,17 +143,4 @@ const styles = StyleSheet.create({
   urgenciaText: { fontSize: 14, fontWeight: 'bold', color: '#555' },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   statusText: { fontSize: 10, fontWeight: 'bold' },
-  cancelButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 15, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#F0F0F0' },
-  cancelText: { color: '#C62828', marginLeft: 5, fontWeight: '600' },
-
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { width: '85%', backgroundColor: 'white', borderRadius: 20, padding: 25, alignItems: 'center', elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4 },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 10, color: '#333' },
-  modalText: { fontSize: 16, color: '#666', textAlign: 'center', marginBottom: 25 },
-  modalButtons: { flexDirection: 'row', width: '100%', justifyContent: 'space-between' },
-  modalBtn: { flex: 1, padding: 12, borderRadius: 10, alignItems: 'center', marginHorizontal: 5 },
-  btnCancel: { backgroundColor: '#F5F5F5', borderWidth: 1, borderColor: '#DDD' },
-  btnConfirm: { backgroundColor: '#C62828' },
-  textBtnCancel: { color: '#333', fontWeight: 'bold' },
-  textBtnConfirm: { color: '#FFF', fontWeight: 'bold' },
 });
